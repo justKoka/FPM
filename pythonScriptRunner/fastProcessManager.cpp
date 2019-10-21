@@ -102,28 +102,28 @@ void fastProcessManager::resetProcess(int fd)
 {
 	write(fd, "kill", 4);
 	pmap.erase(fd);
-	for (auto it = fdset.begin(); it != fdset.end(); ++it)
-		if ((*it).fd == fd)
-		{
-			fdset.erase(it);
-			break;
-		}
+	//for (auto it = fdset.begin(); it != fdset.end(); ++it)
+	//	if ((*it).fd == fd)
+	//	{
+	//		fdset.erase(it);
+	//		break;
+	//	}
 }
 
 void fastProcessManager::run(int pnum)
 {
 	pmap.reserve(pnum);
 	nfds = pnum;
-	struct sigaction act;
-	memset(&act, 0, sizeof(act));
-	act.sa_sigaction = sigHandler;
-	int flags = SA_SIGINFO | SA_NOCLDWAIT;
-	act.sa_flags = flags;
-	sigset_t set;
-	sigemptyset(&set);
-	sigaddset(&set, SIGCHLD);
-	act.sa_mask = set;
-	sigaction(SIGCHLD, &act, NULL);
+	//struct sigaction act;
+	//memset(&act, 0, sizeof(act));
+	//act.sa_sigaction = sigHandler;
+	//int flags = SA_SIGINFO | SA_NOCLDWAIT;
+	//act.sa_flags = flags;
+	//sigset_t set;
+	//sigemptyset(&set);
+	//sigaddset(&set, SIGCHLD);
+	//act.sa_mask = set;
+	//sigaction(SIGCHLD, &act, NULL);
 	for (int i = 0; i < pnum; ++i) {
 		initProcess();
 	}
@@ -132,34 +132,47 @@ void fastProcessManager::run(int pnum)
 void fastProcessManager::listen()
 {
 	char file[] = "/home/koka/Documents/test.py";
+	//for test
+	ptrigger(file);
 	ptrigger(file);
 	ptrigger(file);
 	while (true) {
 		int nTriggeredFd = poll(fdset.data(), nfds, -1);
-		for (int i = 0; i < nfds && nTriggeredFd > 0; i++) {
-			if (fdset[i].revents != 0)
-				if (fdset[i].revents == POLLIN)
+		for (auto it = fdset.begin(); it != fdset.end() && nTriggeredFd > 0;) {
 			{
-				char buffer[MAX_BUFFER_SIZE];
-				int len = read(fdset[i].fd, buffer, MAX_BUFFER_SIZE);
-				buffer[len] = '\0';
-				if (strncmp(buffer, "exit", 4) == 0)
-				{
-					int exitStat = atoi(&buffer[5]);
-					close(fdset[i].fd);
-					if (exitStat != 0)
-						pmap.erase(fdset[i].fd);
-					continue;
-				}
-				printf("data in parent process was: %s\n", buffer);
-				nTriggeredFd--;
-				pmap[fdset[i].fd].status = WAIT;
-				fdset[i].revents = 0;
+				if ((*it).revents != 0)
+					if ((*it).revents == POLLIN)
+					{
+						char buffer[MAX_BUFFER_SIZE];
+						int len = read((*it).fd, buffer, MAX_BUFFER_SIZE);
+						buffer[len] = '\0';
+						if (strncmp(buffer, "exit", 4) == 0)
+						{
+							int exitStat = atoi(&buffer[5]);
+							close((*it).fd);
+							if (exitStat != 0)
+								pmap.erase((*it).fd);
+							auto tmpit = it;
+							if (it+1 != fdset.end())
+								++it;
+							fdset.erase(tmpit);
+							--nTriggeredFd;
+							continue;
+						}
+						printf("data in parent process was: %s\n", buffer);
+						--nTriggeredFd;
+						pmap[(*it).fd].status = WAIT;
+						(*it).revents = 0;
+					}
+					else
+						printf("error, fd %d", (*it).fd);
+				if (it + 1 != fdset.end())
+					++it;
 			}
-				else 
-					printf("error, fd %d", fdset[i].fd);
-		}
-		shutdown();
+
+			}
+		//for test
+		/*shutdown();*/
 	}
 }
 

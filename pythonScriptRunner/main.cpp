@@ -1,7 +1,5 @@
 #include "fastProcessManager.h"
 
-
-
 int main()
 {	
 	fastProcessManager fpm(1024);
