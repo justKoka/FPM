@@ -75,8 +75,11 @@ void fastProcessManager::initProcess()
 			}
 			PyObject* catcher = PyObject_GetAttrString(m, "catcher");
 			PyObject* output = PyObject_GetAttrString(catcher, "data");
-			char *buffer = PyString_AsString(output);
-			printf("data in child process was: %s\n", buffer);
+			char *buffer = strdup(PyBytes_AS_STRING(PyUnicode_AsEncodedString(output, "utf-8", "ERROR")));
+			if (buffer != NULL)
+				printf("data in child process was: %s\n", buffer);
+			else
+				printf("error in data fetching from python script");
 			write(fds[1], buffer, strlen(buffer));
 			fclose(fd);
 			Py_XDECREF(catcher);

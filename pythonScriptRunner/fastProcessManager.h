@@ -1,5 +1,5 @@
 #pragma once
-#include <python2.7/Python.h>
+#include <python3.6m/Python.h>
 #include <cstdio>
 #include <poll.h>
 #include <signal.h>
