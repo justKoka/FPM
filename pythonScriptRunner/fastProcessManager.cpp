@@ -57,8 +57,16 @@ void fastProcessManager::initProcess()
 				close(fds[1]);
 				exit(1);
 			}
-			PyRun_SimpleString("import sys\nclass StdoutCatcher:\n	def __init__(self) :\n		self.data = ''\n	def write(self, stuff) :\n		self.data = self.data + stuff\ncatcher = StdoutCatcher()\nsys.stdout = catcher");
-			PyObject* m = PyImport_AddModule("__main__");
+			PyRun_SimpleString("import sys\nfrom io import StringIO\nclass StdoutCatcher:\n	def __init__(self):\n		self.data = ''\n	def write(self, stuff):\n		self.data = self.data + stuff\n	def flush(self):\n		self.data=self.data\ncatcher = StdoutCatcher()\nsys.stdout = catcher");
+			std::unique_ptr<char[]> input(new char[readlen + 46]);
+			sprintf(input.get(), "oldstdin = sys.stdin\nsys.stdin=StringIO('%s')", inbuff);
+			if(PyRun_SimpleString(input.get()))
+			{
+				printf("stdin redirection failed\n");
+				write(fds[1], "exit 4", 6);
+				close(fds[1]);
+				exit(4);
+			}
 			FILE *fd = fopen(inbuff, "r");
 			if (fd == NULL) {
 				printf("file opening failed\n");
@@ -66,7 +74,8 @@ void fastProcessManager::initProcess()
 				close(fds[1]);
 				exit(2);
 			}
-			if (PyRun_SimpleFile(fd, inbuff))
+			PyObject* m = PyImport_AddModule("__main__");
+			if (PyRun_SimpleFile(fd, "name"))
 			{
 				printf("script running failed\n");
 				write(fds[1], "exit 3", 6);
@@ -105,28 +114,12 @@ void fastProcessManager::resetProcess(int fd)
 {
 	write(fd, "kill", 4);
 	pmap.erase(fd);
-	//for (auto it = fdset.begin(); it != fdset.end(); ++it)
-	//	if ((*it).fd == fd)
-	//	{
-	//		fdset.erase(it);
-	//		break;
-	//	}
 }
 
 void fastProcessManager::run(int pnum)
 {
 	pmap.reserve(pnum);
 	nfds = pnum;
-	//struct sigaction act;
-	//memset(&act, 0, sizeof(act));
-	//act.sa_sigaction = sigHandler;
-	//int flags = SA_SIGINFO | SA_NOCLDWAIT;
-	//act.sa_flags = flags;
-	//sigset_t set;
-	//sigemptyset(&set);
-	//sigaddset(&set, SIGCHLD);
-	//act.sa_mask = set;
-	//sigaction(SIGCHLD, &act, NULL);
 	for (int i = 0; i < pnum; ++i) {
 		initProcess();
 	}
@@ -136,7 +129,6 @@ void fastProcessManager::listen()
 {
 	char file[] = "/home/koka/Documents/test.py";
 	//for test
-	ptrigger(file);
 	ptrigger(file);
 	ptrigger(file);
 	while (true) {

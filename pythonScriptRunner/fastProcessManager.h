@@ -7,6 +7,9 @@
 #include <sys/socket.h>
 #include <vector>
 #include <unordered_map>
+#include <iostream>
+#include <sstream>
+#include <memory>
 
 enum pstatus {
 	WAIT,
